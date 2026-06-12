@@ -1475,7 +1475,7 @@ const ORIGINAL_DATA = {
     // z. B. "https://mvg-quiz-highscore.pianostein.workers.dev".
     // Solange hier der Platzhalter steht oder der Worker nicht erreichbar ist,
     // nutzt das Spiel automatisch einen lokalen Fallback im Browser.
-    const HIGHSCORE_API_URL = "https://mvg-quiz-highscore.pianostein.workers.dev";
+    const HIGHSCORE_API_URL = "https://DEIN-WORKER.DEINE-SUBDOMAIN.workers.dev";
     const HIGHSCORE_GAME_ID = "mvg-haltestellen-quiz";
 
     let data = clone(ORIGINAL_DATA);
@@ -1887,16 +1887,35 @@ const ORIGINAL_DATA = {
       return raw;
     }
 
+    function highscoreNameKey(name) {
+      return String(name || "")
+        .replace(/[\u0000-\u001F\u007F]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .normalize("NFKC")
+        .toLocaleLowerCase("de-DE")
+        .slice(0, 24);
+    }
+
     function sanitizeHighscores(list) {
       if (!Array.isArray(list)) return [];
-      return list
-        .filter(x => x && typeof x.name === "string" && Number.isFinite(Number(x.score)))
-        .map(x => ({
-          name: String(x.name || "Anonym").slice(0, 24),
-          score: Math.max(0, Math.floor(Number(x.score) || 0)),
-          round: Math.max(0, Math.floor(Number(x.round) || 0)),
-          date: x.date || x.created_at || ""
-        }))
+      const bestByName = new Map();
+      for (const raw of list) {
+        if (!raw || typeof raw.name !== "string" || !Number.isFinite(Number(raw.score))) continue;
+        const entry = {
+          name: String(raw.name || "Anonym").replace(/\s+/g, " ").trim().slice(0, 24),
+          score: Math.max(0, Math.floor(Number(raw.score) || 0)),
+          round: Math.max(0, Math.floor(Number(raw.round) || 0)),
+          date: raw.date || raw.created_at || ""
+        };
+        const key = highscoreNameKey(entry.name);
+        if (!key) continue;
+        const previous = bestByName.get(key);
+        if (!previous || entry.score > previous.score || (entry.score === previous.score && entry.round > previous.round)) {
+          bestByName.set(key, entry);
+        }
+      }
+      return [...bestByName.values()]
         .sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0) || (Number(b.round) || 0) - (Number(a.round) || 0))
         .slice(0, 10);
     }
