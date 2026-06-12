@@ -1,0 +1,2185 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MVG-Haltestellen-Quiz</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111c33;
+      --panel-2: #18243d;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #facc15;
+      --accent-2: #38bdf8;
+      --ok: #22c55e;
+      --bad: #ef4444;
+      --border: rgba(255, 255, 255, .13);
+      --shadow: 0 22px 70px rgba(0,0,0,.35);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, .18), transparent 32rem),
+        radial-gradient(circle at bottom right, rgba(250, 204, 21, .12), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+    }
+
+    button, input { font: inherit; }
+
+    .wrap {
+      width: min(940px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 28px 0 42px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 4.2rem);
+      line-height: .95;
+      letter-spacing: -.06em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 12px 0 0;
+      max-width: 760px;
+      line-height: 1.45;
+    }
+
+    .badge {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,.06);
+      color: var(--accent);
+      white-space: nowrap;
+      box-shadow: var(--shadow);
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.035));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .quiz {
+      padding: clamp(18px, 3vw, 34px);
+      min-height: 620px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .stat {
+      background: rgba(15, 23, 42, .55);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .stat .num { font-size: 1.45rem; font-weight: 800; white-space: nowrap; }
+    .stat .label { color: var(--muted); font-size: .84rem; margin-top: 2px; }
+    #lives { letter-spacing: .05em; }
+
+    .questionType {
+      color: var(--accent-2);
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: .12em;
+      font-size: .76rem;
+      margin: 2px 0 10px;
+    }
+
+    .question {
+      font-size: clamp(1.55rem, 3.4vw, 2.65rem);
+      line-height: 1.08;
+      letter-spacing: -.035em;
+      margin: 0 0 18px;
+      font-weight: 850;
+    }
+
+    .hint {
+      color: var(--muted);
+      line-height: 1.45;
+      margin-bottom: 22px;
+      min-height: 1.5em;
+    }
+
+    .answers {
+      display: grid;
+      gap: 12px;
+      margin-top: auto;
+    }
+
+    .answer {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(24, 36, 61, .9);
+      color: var(--text);
+      padding: 15px 17px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+
+    .answer:hover:not(:disabled) {
+      transform: translateY(-1px);
+      background: rgba(31, 48, 82, .95);
+      border-color: rgba(250, 204, 21, .45);
+    }
+
+    .answer:disabled { cursor: default; opacity: .94; }
+    .answer.correct { border-color: rgba(34,197,94,.9); background: rgba(34,197,94,.18); }
+    .answer.wrong { border-color: rgba(239,68,68,.9); background: rgba(239,68,68,.18); }
+
+    .mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #08111f;
+      font-weight: 900;
+      flex: 0 0 auto;
+      background: rgba(255,255,255,.16);
+    }
+    .correct .mark { background: var(--ok); }
+    .wrong .mark { background: var(--bad); color: white; }
+
+    .feedback {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 17px;
+      background: rgba(15, 23, 42, .55);
+      border: 1px solid var(--border);
+      line-height: 1.45;
+      color: var(--muted);
+      min-height: 54px;
+    }
+
+    .feedback strong { color: var(--text); }
+
+    .controls {
+      margin-top: 16px;
+      justify-content: space-between;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 16px;
+      color: #08111f;
+      background: var(--accent);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .12s ease, filter .12s ease;
+    }
+
+    .btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
+    .btn.secondary { background: rgba(255,255,255,.1); color: var(--text); border: 1px solid var(--border); }
+    .btn.danger { background: rgba(239,68,68,.16); color: #fecaca; border: 1px solid rgba(239,68,68,.45); }
+    .btn:disabled { opacity: .45; cursor: default; transform: none; }
+
+    .gameOver {
+      display: none;
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid rgba(250, 204, 21, .35);
+      background: rgba(250, 204, 21, .08);
+      border-radius: 18px;
+    }
+
+    .gameOver.visible { display: block; }
+    .gameOver h2 { margin: 0 0 8px; font-size: 1.2rem; }
+    .gameOver p { margin: 0 0 12px; color: var(--muted); line-height: 1.45; }
+
+    .nameInput {
+      min-width: min(100%, 260px);
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(2, 6, 23, .55);
+      color: var(--text);
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    .nameInput:focus { border-color: rgba(56, 189, 248, .8); }
+
+    .highscores {
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .highscores h2 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .scoreList {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .scoreItem {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      background: rgba(15,23,42,.45);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .rank { color: var(--accent); font-weight: 900; }
+    .player { font-weight: 800; overflow-wrap: anywhere; }
+    .meta { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+    .points { font-weight: 900; white-space: nowrap; }
+    .empty { color: var(--muted); line-height: 1.45; }
+
+    .sourceNote {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: .84rem;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 760px) {
+      header { grid-template-columns: 1fr; }
+      .badge { width: fit-content; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .controls { align-items: stretch; }
+      .controls > .row { width: 100%; }
+      .btn { flex: 1 1 auto; }
+      .scoreItem { grid-template-columns: 34px 1fr; }
+      .points { grid-column: 2; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>MVG-Haltestellen-Quiz</h1>
+        <p class="subtitle">Lerne spielerisch, welche MVG-Linien über welche Orte und zentrale Haltestellen im Märkischen Kreis führen. Du hast drei Leben; bei jeder falschen Antwort verlierst du eins.</p>
+      </div>
+      <div class="badge" id="dataBadge">Lade Daten …</div>
+    </header>
+
+    <main>
+      <section class="card quiz" aria-live="polite">
+        <div class="stats">
+          <div class="stat"><div class="num" id="score">0</div><div class="label">Punkte</div></div>
+          <div class="stat"><div class="num" id="lives">♥ ♥ ♥</div><div class="label">Leben</div></div>
+          <div class="stat"><div class="num" id="streak">0</div><div class="label">Serie</div></div>
+          <div class="stat"><div class="num" id="round">0</div><div class="label">Fragen</div></div>
+          <div class="stat"><div class="num" id="best">0</div><div class="label">Bester Score</div></div>
+        </div>
+
+        <div class="questionType" id="questionType">Bereit?</div>
+        <h2 class="question" id="question">Drücke „Spiel starten“, um zu beginnen.</h2>
+        <div class="hint" id="hint">Tipp: Es gibt Fragen in mehrere Richtungen: Haltepunkt → Linie, Linie → Haltepunkt und Linienverlauf → Linie.</div>
+        <div class="answers" id="answers"></div>
+        <div class="feedback" id="feedback">Noch keine Antwort ausgewählt.</div>
+
+        <div class="row controls">
+          <div class="row">
+            <button class="btn" id="nextBtn">Spiel starten</button>
+          </div>
+          <button class="btn danger" id="abortBtn" disabled>Spiel abbrechen</button>
+        </div>
+
+
+
+        <section class="gameOver" id="gameOverPanel" aria-live="polite">
+          <h2 id="gameOverTitle">Spiel beendet</h2>
+          <p id="gameOverText">Du kannst deinen Score jetzt in die Highscore-Liste eintragen.</p>
+          <form class="row" id="highscoreForm">
+            <input class="nameInput" id="playerName" maxlength="24" autocomplete="name" placeholder="Dein Name" />
+            <button class="btn" type="submit">Score eintragen</button>
+          </form>
+        </section>
+
+        <section class="highscores">
+          <div class="row" style="justify-content: space-between; margin-bottom: 10px;">
+            <h2>Highscore</h2>
+            <button class="btn secondary" id="clearHighscoresBtn" type="button">Highscore löschen</button>
+          </div>
+          <ol class="scoreList" id="scoreList"></ol>
+        </section>
+
+        <p class="sourceNote">Hinweis: Die Datenbasis ist lokal in dieser HTML-Datei eingebettet und ersetzt keine tagesaktuelle Fahrplanauskunft.</p>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    "use strict";
+
+const ORIGINAL_DATA = {
+      "S1": {
+            "route": "Lüdenscheid Sauerfeld ZOB – Lüdenscheid Bahnhof – Kreishaus – MVG-Verwaltung – Altena Mühlenrahmede – Steinbruch – Altena Bahnhof – Nachrodt Einsal – Nachrodt Amtshaus – Iserlohn Stadtbahnhof",
+            "stops": [
+                  "Lüdenscheid Sauerfeld ZOB",
+                  "Lüdenscheid Bahnhof",
+                  "Kreishaus",
+                  "MVG-Verwaltung",
+                  "Altena Mühlenrahmede",
+                  "Steinbruch",
+                  "Altena Bahnhof",
+                  "Nachrodt Einsal",
+                  "Nachrodt Amtshaus",
+                  "Iserlohn Stadtbahnhof"
+            ]
+      },
+      "S2": {
+            "route": "Lüdenscheid Bahnhof – Sauerfeld ZOB – Worth – Bellmerei – Gockeshohl – Werdohl Bahnhof – Plettenberg Bahnhof – Plettenberg Grünestraße ZOB",
+            "stops": [
+                  "Lüdenscheid Bahnhof",
+                  "Sauerfeld ZOB",
+                  "Worth",
+                  "Bellmerei",
+                  "Gockeshohl",
+                  "Werdohl Bahnhof",
+                  "Plettenberg Bahnhof",
+                  "Plettenberg Grünestraße ZOB"
+            ]
+      },
+      "S3": {
+            "route": "Iserlohn Stadtbahnhof – Hemer Niederhemer – Menden Bahnhof",
+            "stops": [
+                  "Iserlohn Stadtbahnhof",
+                  "Hemer Niederhemer",
+                  "Menden Bahnhof"
+            ]
+      },
+      "1": {
+            "route": "Hagen Hohenlimburg Bf. – Iserlohn Letmathe Alter Markt – Letmathe Mitte – Grüner Talstraße – Iserlohn Stadtbahnhof – Konrad-Adenauer-Ring ZOB – Hemer Westiger Kreuz – Hemer ZOB – Becke – Menden Battenfeld – Menden Bahnhof – Menden Hönnenwerth",
+            "stops": [
+                  "Hagen Hohenlimburg Bf",
+                  "Iserlohn Letmathe Alter Markt",
+                  "Letmathe Mitte",
+                  "Grüner Talstraße",
+                  "Iserlohn Stadtbahnhof",
+                  "Konrad-Adenauer-Ring ZOB",
+                  "Hemer Westiger Kreuz",
+                  "Hemer ZOB",
+                  "Becke",
+                  "Menden Battenfeld",
+                  "Menden Bahnhof",
+                  "Menden Hönnenwerth"
+            ]
+      },
+      "2": {
+            "route": "Hemer Brockhausen / Apricke – Deilinghofen – Sundwig – Hemer ZOB – Niederhemer – Landhausen – Iserlohn Rombrock",
+            "stops": [
+                  "Hemer Brockhausen / Apricke",
+                  "Deilinghofen",
+                  "Sundwig",
+                  "Hemer ZOB",
+                  "Niederhemer",
+                  "Landhausen",
+                  "Iserlohn Rombrock"
+            ]
+      },
+      "3": {
+            "route": "Hemer ZOB – Sundwig – Heppingsen – Hüingsen – Frönsberg – Ruthenbeck",
+            "stops": [
+                  "Hemer ZOB",
+                  "Sundwig",
+                  "Heppingsen",
+                  "Hüingsen",
+                  "Frönsberg",
+                  "Ruthenbeck"
+            ]
+      },
+      "4": {
+            "route": "ALF-Ringlinie Iserlohn Stadtbahnhof – Dannenhöfer – Iserlohn ZOB – Kesbern – Hemer Ihmert – Iserlohn Dahlsen – Grüner Talstraße – Dröschede – Iserlohn Stadtbahnhof",
+            "stops": [
+                  "Iserlohn Stadtbahnhof",
+                  "Dannenhöfer",
+                  "Iserlohn ZOB",
+                  "Kesbern",
+                  "Hemer Ihmert",
+                  "Iserlohn Dahlsen",
+                  "Grüner Talstraße",
+                  "Dröschede"
+            ]
+      },
+      "5": {
+            "route": "Iserlohn Lasbeck – Letmathe Mitte – Wiechertstraße – Letmathe Gymnasium – Aquamathe – Stübbeken – Schälk – Hagen Pendling – Viermarkenbaum – Schwerte Ergste Kirchstraße",
+            "stops": [
+                  "Iserlohn Lasbeck",
+                  "Letmathe Mitte",
+                  "Wiechertstraße",
+                  "Letmathe Gymnasium",
+                  "Aquamathe",
+                  "Stübbeken",
+                  "Schälk",
+                  "Hagen Pendling",
+                  "Viermarkenbaum",
+                  "Schwerte Ergste Kirchstraße"
+            ]
+      },
+      "6": {
+            "route": "Iserlohn Papenholz – Grürmannsheide – Oestrich Kirche – Letmathe Mitte – Letmathe Gymnasium",
+            "stops": [
+                  "Iserlohn Papenholz",
+                  "Grürmannsheide",
+                  "Oestrich Kirche",
+                  "Letmathe Mitte",
+                  "Letmathe Gymnasium"
+            ]
+      },
+      "7": {
+            "route": "Iserlohn Brandkopf Wendestelle – Iserlohn Stadtbahnhof – Iserlohn ZOB / Knipp – Sonnenhöhe",
+            "stops": [
+                  "Iserlohn Brandkopf Wendestelle",
+                  "Iserlohn Stadtbahnhof",
+                  "Iserlohn ZOB / Knipp",
+                  "Sonnenhöhe"
+            ]
+      },
+      "8": {
+            "route": "Iserlohn Letmathe Bahnhof – Markenfeld",
+            "stops": [
+                  "Iserlohn Letmathe Bahnhof",
+                  "Markenfeld"
+            ]
+      },
+      "9": {
+            "route": "Iserlohn Letmathe Mitte – Letmathe Alter Markt – Auf der Insel – Lennemühle – Iserlohn Oege Umspannwerk – Hagen Hohenlimburg Mitte – Hagen Hohenlimburg Bf.",
+            "stops": [
+                  "Iserlohn Letmathe Mitte",
+                  "Letmathe Alter Markt",
+                  "Auf der Insel",
+                  "Lennemühle",
+                  "Iserlohn Oege Umspannwerk",
+                  "Hagen Hohenlimburg Mitte",
+                  "Hagen Hohenlimburg Bf"
+            ]
+      },
+      "10": {
+            "route": "Hemer ZOB – Iserlohn – Gesamtschule Nußberg – Gesamtschule Gerlingsen",
+            "stops": [
+                  "Hemer ZOB",
+                  "Iserlohn",
+                  "Gesamtschule Nußberg",
+                  "Gesamtschule Gerlingsen"
+            ]
+      },
+      "11": {
+            "route": "Iserlohn Im Lau – Wohnpark Buchenwäldchen – Iserlohn ZOB – Hemberg – Liebigstraße – Iserlohn Stadtbahnhof – Iserlohn ZOB – Wohnpark Buchenwäldchen – Im Lau",
+            "stops": [
+                  "Iserlohn Im Lau",
+                  "Wohnpark Buchenwäldchen",
+                  "Iserlohn ZOB",
+                  "Hemberg",
+                  "Liebigstraße",
+                  "Iserlohn Stadtbahnhof",
+                  "Im Lau"
+            ]
+      },
+      "12": {
+            "route": "Iserlohn Im Lau – Wohnpark Buchenwäldchen – Iserlohn ZOB – Iserlohn Stadtbahnhof – Liebigstraße – Hemberg – Iserlohn ZOB – Wohnpark Buchenwäldchen – Im Lau",
+            "stops": [
+                  "Iserlohn Im Lau",
+                  "Wohnpark Buchenwäldchen",
+                  "Iserlohn ZOB",
+                  "Iserlohn Stadtbahnhof",
+                  "Liebigstraße",
+                  "Hemberg",
+                  "Im Lau"
+            ]
+      },
+      "13": {
+            "route": "Iserlohn Gerlingsen – Hauptpost – Iserlohn Stadtbahnhof – Schillerplatz – Seilerseebad – Hemer ZOB – Sauerlandpark – Hemer ZOB",
+            "stops": [
+                  "Iserlohn Gerlingsen",
+                  "Hauptpost",
+                  "Iserlohn Stadtbahnhof",
+                  "Schillerplatz",
+                  "Seilerseebad",
+                  "Hemer ZOB",
+                  "Sauerlandpark"
+            ]
+      },
+      "14": {
+            "route": "Iserlohn Gerlingsen – Hauptpost – Iserlohn ZOB – Seilersee – Griesenbrauck – Sümmern – Rombrock",
+            "stops": [
+                  "Iserlohn Gerlingsen",
+                  "Hauptpost",
+                  "Iserlohn ZOB",
+                  "Seilersee",
+                  "Griesenbrauck",
+                  "Sümmern",
+                  "Rombrock"
+            ]
+      },
+      "15": {
+            "route": "Iserlohn Letmathe Bahnhof – Vodeke – Oestrich Kirche – Dröschede – Iserlohn Stadtbahnhof – Iserlohn ZOB – Hombruch",
+            "stops": [
+                  "Iserlohn Letmathe Bahnhof",
+                  "Vodeke",
+                  "Oestrich Kirche",
+                  "Dröschede",
+                  "Iserlohn Stadtbahnhof",
+                  "Iserlohn ZOB",
+                  "Hombruch"
+            ]
+      },
+      "16": {
+            "route": "Iserlohn Letmathe Bahnhof – Zum Volksgarten – Am Dorfanger – Iserlohn ZOB – Hombruch – Wolfskoben – Echelnteichweg",
+            "stops": [
+                  "Iserlohn Letmathe Bahnhof",
+                  "Zum Volksgarten",
+                  "Am Dorfanger",
+                  "Iserlohn ZOB",
+                  "Hombruch",
+                  "Wolfskoben",
+                  "Echelnteichweg"
+            ]
+      },
+      "17": {
+            "route": "Iserlohn Lössel – Roden – Grüner Talstraße – Iserlohn Stadtbahnhof – Sonnenhöhe",
+            "stops": [
+                  "Iserlohn Lössel",
+                  "Roden",
+                  "Grüner Talstraße",
+                  "Iserlohn Stadtbahnhof",
+                  "Sonnenhöhe"
+            ]
+      },
+      "21": {
+            "route": "Menden Platte Heide – Battenfeld – Lendringsen – Freizeitzentrum / Oberrödinghausen",
+            "stops": [
+                  "Menden Platte Heide",
+                  "Battenfeld",
+                  "Lendringsen",
+                  "Freizeitzentrum / Oberrödinghausen"
+            ]
+      },
+      "22": {
+            "route": "Iserlohn Stadtbahnhof – Hauptpost – Sümmern – Menden Battenfeld – Lendringsen – Hüingsen",
+            "stops": [
+                  "Iserlohn Stadtbahnhof",
+                  "Hauptpost",
+                  "Sümmern",
+                  "Menden Battenfeld",
+                  "Lendringsen",
+                  "Hüingsen"
+            ]
+      },
+      "23": {
+            "route": "Menden Battenfeld – Fröndenberg Mitte",
+            "stops": [
+                  "Menden Battenfeld",
+                  "Fröndenberg Mitte"
+            ]
+      },
+      "24": {
+            "route": "Menden Platte Heide / Obsthof – Menden Bahnhof – Battenfeld – Lahrfeld",
+            "stops": [
+                  "Menden Platte Heide / Obsthof",
+                  "Menden Bahnhof",
+                  "Battenfeld",
+                  "Lahrfeld"
+            ]
+      },
+      "25": {
+            "route": "ALF Menden Lendringsen – Böingsen – Jungholz – Asbeck – Balve Eisborn – Hemer Deilinghofen",
+            "stops": [
+                  "Menden Lendringsen",
+                  "Böingsen",
+                  "Jungholz",
+                  "Asbeck",
+                  "Balve Eisborn",
+                  "Hemer Deilinghofen"
+            ]
+      },
+      "26": {
+            "route": "ALF Menden Bahnhof – Friedhof Limberg – Oesbern – Werringsen Kapelle",
+            "stops": [
+                  "Menden Bahnhof",
+                  "Friedhof Limberg",
+                  "Oesbern",
+                  "Werringsen Kapelle"
+            ]
+      },
+      "27": {
+            "route": "Menden Battenfeld – Bösperde – Halingen – Fröndenberg Langschede – Unna Bahnhof",
+            "stops": [
+                  "Menden Battenfeld",
+                  "Bösperde",
+                  "Halingen",
+                  "Fröndenberg Langschede",
+                  "Unna Bahnhof"
+            ]
+      },
+      "29": {
+            "route": "Menden Lendringsen Sparkasse – Menden Eisengießerei – Rauherfeld – Battenfeld – Menden Bahnhof – Mühlenbergstraße – Hämmerstraße – Hof Riekenbrauck – Mobilitätshub Hämmer",
+            "stops": [
+                  "Menden Lendringsen Sparkasse",
+                  "Menden Eisengießerei",
+                  "Rauherfeld",
+                  "Battenfeld",
+                  "Menden Bahnhof",
+                  "Mühlenbergstraße",
+                  "Hämmerstraße",
+                  "Hof Riekenbrauck",
+                  "Mobilitätshub Hämmer"
+            ]
+      },
+      "30": {
+            "route": "Altena Bornstraße – Eichendorffstraße – Tiergarten",
+            "stops": [
+                  "Altena Bornstraße",
+                  "Eichendorffstraße",
+                  "Tiergarten"
+            ]
+      },
+      "32": {
+            "route": "Altena Hegenscheider Weg – Pragpaul – Am Markaner ZOB – Dahle Schule",
+            "stops": [
+                  "Altena Hegenscheider Weg",
+                  "Pragpaul",
+                  "Am Markaner ZOB",
+                  "Dahle Schule"
+            ]
+      },
+      "33": {
+            "route": "Altena Hegenscheider Weg – Pragpaul – Am Markaner ZOB – Hemer Ihmert – Hemer ZOB",
+            "stops": [
+                  "Altena Hegenscheider Weg",
+                  "Pragpaul",
+                  "Am Markaner ZOB",
+                  "Hemer Ihmert",
+                  "Hemer ZOB"
+            ]
+      },
+      "34": {
+            "route": "Altena Nettenscheid Dorf – Blackburner Straße – Nettenscheid Siedlung – Nette Schule – Am Markaner ZOB – Altena Bahnhof",
+            "stops": [
+                  "Altena Nettenscheid Dorf",
+                  "Blackburner Straße",
+                  "Nettenscheid Siedlung",
+                  "Nette Schule",
+                  "Am Markaner ZOB",
+                  "Altena Bahnhof"
+            ]
+      },
+      "35": {
+            "route": "Ortsverkehr Dahle – Dahle Schule – Altena Dahle",
+            "stops": [
+                  "Ortsverkehr Dahle",
+                  "Dahle Schule",
+                  "Altena Dahle"
+            ]
+      },
+      "36": {
+            "route": "Werdohl Bahnhof – Elverlingsen – Altena Am Markaner ZOB – Stadtwerke",
+            "stops": [
+                  "Werdohl Bahnhof",
+                  "Elverlingsen",
+                  "Altena Am Markaner ZOB",
+                  "Stadtwerke"
+            ]
+      },
+      "37": {
+            "route": "Lüdenscheid Kulturhaus – Sauerfeld ZOB – Gevelndorf – Oberrahmede – Altena Mühlenrahmede – Am Markaner ZOB – Altena Bahnhof – Am Halse – Nachrodt Amtshaus – Iserlohn Letmathe Bahnhof – Letmathe Mitte",
+            "stops": [
+                  "Lüdenscheid Kulturhaus",
+                  "Sauerfeld ZOB",
+                  "Gevelndorf",
+                  "Oberrahmede",
+                  "Altena Mühlenrahmede",
+                  "Am Markaner ZOB",
+                  "Altena Bahnhof",
+                  "Am Halse",
+                  "Nachrodt Amtshaus",
+                  "Iserlohn Letmathe Bahnhof",
+                  "Letmathe Mitte"
+            ]
+      },
+      "38": {
+            "route": "Altena Breitenhagen – Altena Bahnhof – Am Markaner ZOB – Bungern",
+            "stops": [
+                  "Altena Breitenhagen",
+                  "Altena Bahnhof",
+                  "Am Markaner ZOB",
+                  "Bungern"
+            ]
+      },
+      "40": {
+            "route": "Lüdenscheid Schubertstraße – Sauerfeld ZOB – Gymnasium Saarlandstraße",
+            "stops": [
+                  "Lüdenscheid Schubertstraße",
+                  "Sauerfeld ZOB",
+                  "Gymnasium Saarlandstraße"
+            ]
+      },
+      "41": {
+            "route": "Lüdenscheid Schubertstraße – Sauerfeld ZOB – Worth – Eichholz",
+            "stops": [
+                  "Lüdenscheid Schubertstraße",
+                  "Sauerfeld ZOB",
+                  "Worth",
+                  "Eichholz"
+            ]
+      },
+      "42": {
+            "route": "Lüdenscheid Noell – Gevelndorf – Sauerfeld ZOB – Klinikum Hellersen – Kalve – Leifringhausen – Brüninghauser Halle – Niederschemm",
+            "stops": [
+                  "Lüdenscheid Noell",
+                  "Gevelndorf",
+                  "Sauerfeld ZOB",
+                  "Klinikum Hellersen",
+                  "Kalve",
+                  "Leifringhausen",
+                  "Brüninghauser Halle",
+                  "Niederschemm"
+            ]
+      },
+      "43": {
+            "route": "Lüdenscheid Bahnhof – Sauerfeld ZOB – Worth – Bellmerei – Wettringhof",
+            "stops": [
+                  "Lüdenscheid Bahnhof",
+                  "Sauerfeld ZOB",
+                  "Worth",
+                  "Bellmerei",
+                  "Wettringhof"
+            ]
+      },
+      "44": {
+            "route": "Lüdenscheid Hellersen – Hollweg / Klinikum – Bräucken – Sauerfeld ZOB – Wehberg – Freisenberg",
+            "stops": [
+                  "Lüdenscheid Hellersen",
+                  "Hollweg / Klinikum",
+                  "Bräucken",
+                  "Sauerfeld ZOB",
+                  "Wehberg",
+                  "Freisenberg"
+            ]
+      },
+      "46": {
+            "route": "Lüdenscheid Baukloh – Familienbad Nattenberg – Sauerfeld ZOB – Lüdenscheid Bahnhof – Evangelischer Friedhof",
+            "stops": [
+                  "Lüdenscheid Baukloh",
+                  "Familienbad Nattenberg",
+                  "Sauerfeld ZOB",
+                  "Lüdenscheid Bahnhof",
+                  "Evangelischer Friedhof"
+            ]
+      },
+      "47": {
+            "route": "Halver Ostendorf – Lüdenscheid Brügge Bahnhof – Sauerfeld ZOB – Honsel – Eichholz",
+            "stops": [
+                  "Halver Ostendorf",
+                  "Lüdenscheid Brügge Bahnhof",
+                  "Sauerfeld ZOB",
+                  "Honsel",
+                  "Eichholz"
+            ]
+      },
+      "48": {
+            "route": "Lüdenscheid Pöppelsheim – Oeneking – Sauerfeld ZOB – Bräucken – Eichholz",
+            "stops": [
+                  "Lüdenscheid Pöppelsheim",
+                  "Oeneking",
+                  "Sauerfeld ZOB",
+                  "Bräucken",
+                  "Eichholz"
+            ]
+      },
+      "49": {
+            "route": "Iserlohn Lasbeck – Nachrodt Amtshaus – Obstfeld – Wiblingwerde – Lüdenscheid Kreishaus – Sauerfeld ZOB – Kulturhaus",
+            "stops": [
+                  "Iserlohn Lasbeck",
+                  "Nachrodt Amtshaus",
+                  "Obstfeld",
+                  "Wiblingwerde",
+                  "Lüdenscheid Kreishaus",
+                  "Sauerfeld ZOB",
+                  "Kulturhaus"
+            ]
+      },
+      "52": {
+            "route": "Lüdenscheid Sauerfeld ZOB – Piepersloh – Meinerzhagen Neuemühle – Herscheid",
+            "stops": [
+                  "Lüdenscheid Sauerfeld ZOB",
+                  "Piepersloh",
+                  "Meinerzhagen Neuemühle",
+                  "Herscheid"
+            ]
+      },
+      "53": {
+            "route": "Lüdenscheid Dickenberg – Sauerfeld ZOB – Kluser Platz – Worthhöh – Brüderweg – Vogelberg",
+            "stops": [
+                  "Lüdenscheid Dickenberg",
+                  "Sauerfeld ZOB",
+                  "Kluser Platz",
+                  "Worthhöh",
+                  "Brüderweg",
+                  "Vogelberg"
+            ]
+      },
+      "54": {
+            "route": "Lüdenscheid Bahnhof – Sauerfeld ZOB – Bierbaum – Herscheid Markt – Hüinghausen – Plettenberg Holthausen – Grünestraße ZOB",
+            "stops": [
+                  "Lüdenscheid Bahnhof",
+                  "Sauerfeld ZOB",
+                  "Bierbaum",
+                  "Herscheid Markt",
+                  "Hüinghausen",
+                  "Plettenberg Holthausen",
+                  "Grünestraße ZOB"
+            ]
+      },
+      "55": {
+            "route": "Lüdenscheid Kulturhaus – Brügge Bahnhof – Halver – Wipperfürth",
+            "stops": [
+                  "Lüdenscheid Kulturhaus",
+                  "Brügge Bahnhof",
+                  "Halver",
+                  "Wipperfürth"
+            ]
+      },
+      "56": {
+            "route": "Ahelle – Brügge – Halver Ostendorf – Lüdenscheid Brügge – Haus Schöneck – Wehberg Wendestelle",
+            "stops": [
+                  "Ahelle",
+                  "Brügge",
+                  "Halver Ostendorf",
+                  "Lüdenscheid Brügge",
+                  "Haus Schöneck",
+                  "Wehberg Wendestelle"
+            ]
+      },
+      "57": {
+            "route": "Lüdenscheid Brügge Bahnhof – Schalksmühle Strücken – Schalksmühle Mitte – Hagen Rummenohl",
+            "stops": [
+                  "Lüdenscheid Brügge Bahnhof",
+                  "Schalksmühle Strücken",
+                  "Schalksmühle Mitte",
+                  "Hagen Rummenohl"
+            ]
+      },
+      "58": {
+            "route": "Lüdenscheid Kulturhaus – Sauerfeld ZOB – Brügge Bahnhof – Kierspe ZOB",
+            "stops": [
+                  "Lüdenscheid Kulturhaus",
+                  "Sauerfeld ZOB",
+                  "Brügge Bahnhof",
+                  "Kierspe ZOB"
+            ]
+      },
+      "60": {
+            "route": "Werdohl Bahnhof – Kirche – Neuenrade Mitte – Neuenrade Bahnhof – Küntrop – Brunnenbach – Werdohl Bahnhof",
+            "stops": [
+                  "Werdohl Bahnhof",
+                  "Kirche",
+                  "Neuenrade Mitte",
+                  "Neuenrade Bahnhof",
+                  "Küntrop",
+                  "Brunnenbach"
+            ]
+      },
+      "61": {
+            "route": "Lüdenscheid Kulturhaus – Sauerfeld ZOB – Wettringhof – Werdohl Borbecke – Kleinhammer – Pungelscheid – Werdohl Kirche – Werdohl Bahnhof",
+            "stops": [
+                  "Lüdenscheid Kulturhaus",
+                  "Sauerfeld ZOB",
+                  "Wettringhof",
+                  "Werdohl Borbecke",
+                  "Kleinhammer",
+                  "Pungelscheid",
+                  "Werdohl Kirche",
+                  "Werdohl Bahnhof"
+            ]
+      },
+      "62": {
+            "route": "Werdohl Ütterlingsen – Werdohl Bahnhof",
+            "stops": [
+                  "Werdohl Ütterlingsen",
+                  "Werdohl Bahnhof"
+            ]
+      },
+      "63": {
+            "route": "Werdohl Bahnhof – Werdohl Kirche – Kleinhammer – Pungelscheid – Riesei",
+            "stops": [
+                  "Werdohl Bahnhof",
+                  "Werdohl Kirche",
+                  "Kleinhammer",
+                  "Pungelscheid",
+                  "Riesei"
+            ]
+      },
+      "64": {
+            "route": "Werdohl Rodt – Werdohl Bahnhof – Werdohl Kirche – Am Paulstück – Oberer Bausenberg – Hartmecke",
+            "stops": [
+                  "Werdohl Rodt",
+                  "Werdohl Bahnhof",
+                  "Werdohl Kirche",
+                  "Am Paulstück",
+                  "Oberer Bausenberg",
+                  "Hartmecke"
+            ]
+      },
+      "65": {
+            "route": "Werdohl Bahnhof – Vorthbrücke – Königsburg – Waldstraße – Becke – Feldstraße – Vorthbrücke – Werdohl Bahnhof",
+            "stops": [
+                  "Werdohl Bahnhof",
+                  "Vorthbrücke",
+                  "Königsburg",
+                  "Waldstraße",
+                  "Becke",
+                  "Feldstraße"
+            ]
+      },
+      "66": {
+            "route": "ALF Werdohl Am Großen Stück – Bremfeld – Hesmecke – Osmecke – Werdohl Kirche – Werdohl Bahnhof – Seniorenheim Forsthaus",
+            "stops": [
+                  "Werdohl Am Großen Stück",
+                  "Bremfeld",
+                  "Hesmecke",
+                  "Osmecke",
+                  "Werdohl Kirche",
+                  "Werdohl Bahnhof",
+                  "Seniorenheim Forsthaus"
+            ]
+      },
+      "67": {
+            "route": "ALF Neuenrade Mitte – Küntrop – Blintrop – Balve Langenholthausen – Bahnhof – Höveringhausen – Neuenrade Bahnhof – Altena Pflegeheim Kohlberg",
+            "stops": [
+                  "Neuenrade Mitte",
+                  "Küntrop",
+                  "Blintrop",
+                  "Balve Langenholthausen",
+                  "Bahnhof",
+                  "Höveringhausen",
+                  "Neuenrade Bahnhof",
+                  "Altena Pflegeheim Kohlberg"
+            ]
+      },
+      "70": {
+            "route": "Plettenberg Grünestraße ZOB – Lettmecke – Himmelmert – Attendorn Lichtringhausen – St.-Ursula-Schulen – Bahnhof ZOB",
+            "stops": [
+                  "Plettenberg Grünestraße ZOB",
+                  "Lettmecke",
+                  "Himmelmert",
+                  "Attendorn Lichtringhausen",
+                  "St.-Ursula-Schulen",
+                  "Bahnhof ZOB"
+            ]
+      },
+      "71": {
+            "route": "Plettenberg Krankenhaus – Grünestraße ZOB – Eschen Schule – Bahnhof – Kersmecke",
+            "stops": [
+                  "Plettenberg Krankenhaus",
+                  "Grünestraße ZOB",
+                  "Eschen Schule",
+                  "Bahnhof",
+                  "Kersmecke"
+            ]
+      },
+      "72": {
+            "route": "Finnentrop Hülschotten – Plettenberg Landemert – Grünestraße ZOB",
+            "stops": [
+                  "Finnentrop Hülschotten",
+                  "Plettenberg Landemert",
+                  "Grünestraße ZOB"
+            ]
+      },
+      "73": {
+            "route": "Plettenberg Eschen Schule – Grünestraße ZOB – Krankenhaus – Oestertalsperre Wendestelle",
+            "stops": [
+                  "Plettenberg Eschen Schule",
+                  "Grünestraße ZOB",
+                  "Krankenhaus",
+                  "Oestertalsperre Wendestelle"
+            ]
+      },
+      "74": {
+            "route": "Plettenberg Holthausen – Hechmecke – Grünestraße ZOB – Burg",
+            "stops": [
+                  "Plettenberg Holthausen",
+                  "Hechmecke",
+                  "Grünestraße ZOB",
+                  "Burg"
+            ]
+      },
+      "75": {
+            "route": "Plettenberg Holthausen – Bruch – Grünestraße ZOB – Kersmecke – Böddinghausen – Burg",
+            "stops": [
+                  "Plettenberg Holthausen",
+                  "Bruch",
+                  "Grünestraße ZOB",
+                  "Kersmecke",
+                  "Böddinghausen",
+                  "Burg"
+            ]
+      },
+      "76": {
+            "route": "Plettenberg Grünestraße ZOB – Bahnhof – Neuenrade Altenaffeln – Affeln – Neuenrade Bahnhof – Neuenrade Mitte",
+            "stops": [
+                  "Plettenberg Grünestraße ZOB",
+                  "Bahnhof",
+                  "Neuenrade Altenaffeln",
+                  "Affeln",
+                  "Neuenrade Bahnhof",
+                  "Neuenrade Mitte"
+            ]
+      },
+      "80": {
+            "route": "Meinerzhagen Schöppenkampstraße – Trotzenburg – Schlenke",
+            "stops": [
+                  "Meinerzhagen Schöppenkampstraße",
+                  "Trotzenburg",
+                  "Schlenke"
+            ]
+      },
+      "81": {
+            "route": "Meinerzhagen Heerhof – Goethestraße",
+            "stops": [
+                  "Meinerzhagen Heerhof",
+                  "Goethestraße"
+            ]
+      },
+      "82": {
+            "route": "Meinerzhagen Bahnhof ZOB – Kierspe Bahnhof / ZOB – Kierspe Am Hedberg",
+            "stops": [
+                  "Meinerzhagen Bahnhof ZOB",
+                  "Kierspe Bahnhof / ZOB",
+                  "Kierspe Am Hedberg"
+            ]
+      },
+      "83": {
+            "route": "Kierspe Bruch – Bismarckschule – Halzenbach",
+            "stops": [
+                  "Kierspe Bruch",
+                  "Bismarckschule",
+                  "Halzenbach"
+            ]
+      },
+      "84": {
+            "route": "Kierspe Am Hedberg – Halver ZOB – Breckerfeld Busbahnhof – Hagen Eilpe – Hagen Hauptbahnhof",
+            "stops": [
+                  "Kierspe Am Hedberg",
+                  "Halver ZOB",
+                  "Breckerfeld Busbahnhof",
+                  "Hagen Eilpe",
+                  "Hagen Hauptbahnhof"
+            ]
+      },
+      "85": {
+            "route": "Halver Schulzentrum – Schalksmühle Rathausplatz",
+            "stops": [
+                  "Halver Schulzentrum",
+                  "Schalksmühle Rathausplatz"
+            ]
+      },
+      "86": {
+            "route": "Schalksmühle Rathausplatz – Dahlerbrück – Breckerfeld",
+            "stops": [
+                  "Schalksmühle Rathausplatz",
+                  "Dahlerbrück",
+                  "Breckerfeld"
+            ]
+      },
+      "87": {
+            "route": "Schalksmühle Reeswinkel – Rathausplatz – Stallhaus – Ramsloh – Heedfeld – Lüdenscheid Kreishaus – Sauerfeld ZOB – Kulturhaus – Bergstadt-Gymnasium",
+            "stops": [
+                  "Schalksmühle Reeswinkel",
+                  "Rathausplatz",
+                  "Stallhaus",
+                  "Ramsloh",
+                  "Heedfeld",
+                  "Lüdenscheid Kreishaus",
+                  "Sauerfeld ZOB",
+                  "Kulturhaus",
+                  "Bergstadt-Gymnasium"
+            ]
+      },
+      "88": {
+            "route": "Schalksmühle Schule Löh – Spormecke – Everinghausen",
+            "stops": [
+                  "Schalksmühle Schule Löh",
+                  "Spormecke",
+                  "Everinghausen"
+            ]
+      },
+      "89": {
+            "route": "Schalksmühle Schule Löh – Spormecke – Sonnenscheid",
+            "stops": [
+                  "Schalksmühle Schule Löh",
+                  "Spormecke",
+                  "Sonnenscheid"
+            ]
+      },
+      "90": {
+            "route": "Plettenberg Pasel – Bahnhof – Hallenschule – Schulzentrum Böddinghausen",
+            "stops": [
+                  "Plettenberg Pasel",
+                  "Bahnhof",
+                  "Hallenschule",
+                  "Schulzentrum Böddinghausen"
+            ]
+      },
+      "91": {
+            "route": "Halver Giersiepen – Anschlag – Oberbrügge",
+            "stops": [
+                  "Halver Giersiepen",
+                  "Anschlag",
+                  "Oberbrügge"
+            ]
+      },
+      "92": {
+            "route": "Halver Glörfeld – Schulzentrum – Sparkasse ZOB",
+            "stops": [
+                  "Halver Glörfeld",
+                  "Schulzentrum",
+                  "Sparkasse ZOB"
+            ]
+      },
+      "93": {
+            "route": "Halver Buschhausen – Schulzentrum – Halverscheid – Sparkasse ZOB",
+            "stops": [
+                  "Halver Buschhausen",
+                  "Schulzentrum",
+                  "Halverscheid",
+                  "Sparkasse ZOB"
+            ]
+      },
+      "94": {
+            "route": "Kierspe Rönsahl – Pestalozzischule – Kierspe ZOB",
+            "stops": [
+                  "Kierspe Rönsahl",
+                  "Pestalozzischule",
+                  "Kierspe ZOB"
+            ]
+      },
+      "95": {
+            "route": "Meinerzhagen Neuemühle – Stadthalle – Schulzentrum Rothenstein",
+            "stops": [
+                  "Meinerzhagen Neuemühle",
+                  "Stadthalle",
+                  "Schulzentrum Rothenstein"
+            ]
+      },
+      "96": {
+            "route": "Meinerzhagen Schulzentrum Rothenstein – Krummenerl – Hunswinkel – Windebruch – Valbert – Windebruch – Krummenerl",
+            "stops": [
+                  "Meinerzhagen Schulzentrum Rothenstein",
+                  "Krummenerl",
+                  "Hunswinkel",
+                  "Windebruch",
+                  "Valbert"
+            ]
+      },
+      "99": {
+            "route": "Kierspe Beckinghausen – Fernhagen – Pestalozzischule",
+            "stops": [
+                  "Kierspe Beckinghausen",
+                  "Fernhagen",
+                  "Pestalozzischule"
+            ]
+      },
+      "204": {
+            "route": "Iserlohn Seilerseebad – Stadtbahnhof – Hemer Ihmert – Dahlsen – Hombeck im Siepen – Dannenhöfer – Saatschule",
+            "stops": [
+                  "Iserlohn Seilerseebad",
+                  "Stadtbahnhof",
+                  "Hemer Ihmert",
+                  "Dahlsen",
+                  "Hombeck im Siepen",
+                  "Dannenhöfer",
+                  "Saatschule"
+            ]
+      },
+      "210": {
+            "route": "Hemer Eisenbahnschleife – Westiger Kreuz – Iserlohn Bädekerplatz – Iserlohn ZOB",
+            "stops": [
+                  "Hemer Eisenbahnschleife",
+                  "Westiger Kreuz",
+                  "Iserlohn Bädekerplatz",
+                  "Iserlohn ZOB"
+            ]
+      },
+      "214": {
+            "route": "Iserlohn Gerlingsen – Iserlohn ZOB – Schulzentrum Hemberg – Griesenbrauck – Sümmern",
+            "stops": [
+                  "Iserlohn Gerlingsen",
+                  "Iserlohn ZOB",
+                  "Schulzentrum Hemberg",
+                  "Griesenbrauck",
+                  "Sümmern"
+            ]
+      },
+      "218": {
+            "route": "Iserlohn Lössel – Dröschede – Gesamtschule Gerlingsen – Iserlohn Stadtbahnhof – Letmathe Gymnasium",
+            "stops": [
+                  "Iserlohn Lössel",
+                  "Dröschede",
+                  "Gesamtschule Gerlingsen",
+                  "Iserlohn Stadtbahnhof",
+                  "Letmathe Gymnasium"
+            ]
+      },
+      "221": {
+            "route": "Menden Platte Heide – G.-Bäumer-Straße – Battenfeld – Lendringsen – Hüingsen / Freibad / Oberrödinghausen",
+            "stops": [
+                  "Menden Platte Heide",
+                  "G.-Bäumer-Straße",
+                  "Battenfeld",
+                  "Lendringsen",
+                  "Hüingsen / Freibad / Oberrödinghausen"
+            ]
+      },
+      "222": {
+            "route": "Iserlohn ZOB – Schule Hemberg – Sümmern – Menden Platte Heide – Schulzentrum",
+            "stops": [
+                  "Iserlohn ZOB",
+                  "Schule Hemberg",
+                  "Sümmern",
+                  "Menden Platte Heide",
+                  "Schulzentrum"
+            ]
+      },
+      "237": {
+            "route": "Altena Knerling – Breitenhagen – Mühlenrahmede Schule – Lüdenscheid Dünnebrett – Wehberg",
+            "stops": [
+                  "Altena Knerling",
+                  "Breitenhagen",
+                  "Mühlenrahmede Schule",
+                  "Lüdenscheid Dünnebrett",
+                  "Wehberg"
+            ]
+      },
+      "243": {
+            "route": "Lüdenscheid Geschwister-Scholl-Gymnasium – Brüninghausen – Altena Rosmart – Lüdenscheid Bellmerei",
+            "stops": [
+                  "Lüdenscheid Geschwister-Scholl-Gymnasium",
+                  "Brüninghausen",
+                  "Altena Rosmart",
+                  "Lüdenscheid Bellmerei"
+            ]
+      },
+      "245": {
+            "route": "Lüdenscheid Dickenberg – Oberrahmede – Gevelndorf – Freisenberg – Wehberg – Sauerfeld ZOB – Schule Wefelshohl",
+            "stops": [
+                  "Lüdenscheid Dickenberg",
+                  "Oberrahmede",
+                  "Gevelndorf",
+                  "Freisenberg",
+                  "Wehberg",
+                  "Sauerfeld ZOB",
+                  "Schule Wefelshohl"
+            ]
+      },
+      "246": {
+            "route": "Lüdenscheid Baukloh – Sauerfeld ZOB – Haus Schöneck",
+            "stops": [
+                  "Lüdenscheid Baukloh",
+                  "Sauerfeld ZOB",
+                  "Haus Schöneck"
+            ]
+      },
+      "249": {
+            "route": "Iserlohn Lasbeck – Nachrodt Amtshaus – Bachstraße – Opperhusen",
+            "stops": [
+                  "Iserlohn Lasbeck",
+                  "Nachrodt Amtshaus",
+                  "Bachstraße",
+                  "Opperhusen"
+            ]
+      },
+      "254": {
+            "route": "Lüdenscheid Wehberg – Sauerfeld ZOB – Herscheid – Plettenberg Grünestraße ZOB – Schulzentrum Böddinghausen",
+            "stops": [
+                  "Lüdenscheid Wehberg",
+                  "Sauerfeld ZOB",
+                  "Herscheid",
+                  "Plettenberg Grünestraße ZOB",
+                  "Schulzentrum Böddinghausen"
+            ]
+      },
+      "260": {
+            "route": "Werdohl Bahnhof – Neuenrade – Altena Dahle – Nettenscheid – Altena Bahnhof",
+            "stops": [
+                  "Werdohl Bahnhof",
+                  "Neuenrade",
+                  "Altena Dahle",
+                  "Nettenscheid",
+                  "Altena Bahnhof"
+            ]
+      },
+      "261": {
+            "route": "Werdohl Borbecke – Kleinhammer Schule",
+            "stops": [
+                  "Werdohl Borbecke",
+                  "Kleinhammer Schule"
+            ]
+      },
+      "267": {
+            "route": "Neuenrade Gosekamp – Altenaffeln – Garbeck – Balve",
+            "stops": [
+                  "Neuenrade Gosekamp",
+                  "Altenaffeln",
+                  "Garbeck",
+                  "Balve"
+            ]
+      },
+      "270": {
+            "route": "Plettenberg Grünestraße ZOB – Lettmecke – Attendorn Bahnhof / ZOB",
+            "stops": [
+                  "Plettenberg Grünestraße ZOB",
+                  "Lettmecke",
+                  "Attendorn Bahnhof / ZOB"
+            ]
+      },
+      "272": {
+            "route": "Plettenberg Holthausen Schule – Zeppelinschule – Grünestraße ZOB – Herscheid Hüinghausen – Plettenberg Köbbinghausen",
+            "stops": [
+                  "Plettenberg Holthausen Schule",
+                  "Zeppelinschule",
+                  "Grünestraße ZOB",
+                  "Herscheid Hüinghausen",
+                  "Plettenberg Köbbinghausen"
+            ]
+      },
+      "274": {
+            "route": "Werdohl Bahnhof – Neuenrade Küntrop – Plettenberg Böddinghausen – Holthausen Schule",
+            "stops": [
+                  "Werdohl Bahnhof",
+                  "Neuenrade Küntrop",
+                  "Plettenberg Böddinghausen",
+                  "Holthausen Schule"
+            ]
+      },
+      "275": {
+            "route": "Plettenberg Grünestraße ZOB – Böddinghausen – Burg",
+            "stops": [
+                  "Plettenberg Grünestraße ZOB",
+                  "Böddinghausen",
+                  "Burg"
+            ]
+      },
+      "277": {
+            "route": "Plettenberg Himmelmert – Herscheid Rahlenbergschule",
+            "stops": [
+                  "Plettenberg Himmelmert",
+                  "Herscheid Rahlenbergschule"
+            ]
+      },
+      "279": {
+            "route": "Herscheid Bubbecke – Rahlenbergschule",
+            "stops": [
+                  "Herscheid Bubbecke",
+                  "Rahlenbergschule"
+            ]
+      },
+      "281": {
+            "route": "Meinerzhagen Goethestraße – Heerhof",
+            "stops": [
+                  "Meinerzhagen Goethestraße",
+                  "Heerhof"
+            ]
+      },
+      "282": {
+            "route": "Meinerzhagen Valbert – Stadthalle – Kierspe Am Hedberg",
+            "stops": [
+                  "Meinerzhagen Valbert",
+                  "Stadthalle",
+                  "Kierspe Am Hedberg"
+            ]
+      },
+      "283": {
+            "route": "Kierspe Vornholt – Handweiser – Bismarckschule",
+            "stops": [
+                  "Kierspe Vornholt",
+                  "Handweiser",
+                  "Bismarckschule"
+            ]
+      },
+      "291": {
+            "route": "Halver Engstfeld – Halver Anschlag Schule",
+            "stops": [
+                  "Halver Engstfeld",
+                  "Halver Anschlag Schule"
+            ]
+      },
+      "296": {
+            "route": "Meinerzhagen Kropplenberg – Südschule – Schule Wahr",
+            "stops": [
+                  "Meinerzhagen Kropplenberg",
+                  "Südschule",
+                  "Schule Wahr"
+            ]
+      },
+      "N7": {
+            "route": "Lüdenscheid Sauerfeld ZOB – Herscheid – Plettenberg Bahnhof",
+            "stops": [
+                  "Lüdenscheid Sauerfeld ZOB",
+                  "Herscheid",
+                  "Plettenberg Bahnhof"
+            ]
+      }
+};
+
+    let data = clone(ORIGINAL_DATA);
+    let stopToLines = new Map();
+    let allStops = [];
+    let allLines = [];
+    let currentQuestion = null;
+    let answered = false;
+    let gameActive = false;
+    let score = 0;
+    let streak = 0;
+    let round = 0;
+    let lives = 3;
+    let highscores = loadHighscores();
+    let savedCurrentScore = false;
+    let dataSource = "embedded";
+
+    const OFFICIAL_GTFS_URL = "https://gtfs.openvrr.de/google_transit.zip";
+    const GTFS_CACHE_KEY = "mvgQuizGtfsDataV3";
+    const GTFS_CACHE_META_KEY = "mvgQuizGtfsDataV3Meta";
+    const MVG_AGENCY_HINTS = ["märkische verkehrsgesellschaft", "maerkische verkehrsgesellschaft"];
+
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      dataBadge: $("dataBadge"), score: $("score"), lives: $("lives"), streak: $("streak"), round: $("round"), best: $("best"),
+      questionType: $("questionType"), question: $("question"), hint: $("hint"), answers: $("answers"), feedback: $("feedback"),
+      nextBtn: $("nextBtn"), abortBtn: $("abortBtn"),
+      gameOverPanel: $("gameOverPanel"), gameOverTitle: $("gameOverTitle"), gameOverText: $("gameOverText"),
+      highscoreForm: $("highscoreForm"), playerName: $("playerName"), scoreList: $("scoreList"), clearHighscoresBtn: $("clearHighscoresBtn"),
+      gtfsStatus: $("gtfsStatus"), dataSourceLabel: $("dataSourceLabel")
+    };
+
+    function clone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function normalizeStopName(name) {
+      return String(name || "").replace(/\s+/g, " ").trim();
+    }
+
+
+    function normalizeLineId(line) {
+      let s = String(line || "").trim();
+      s = s.replace(/^Linie\s*/i, "").replace(/\s+/g, "");
+      let m = s.match(/^([sSnN])0*(\d+)$/);
+      if (m) return m[1].toUpperCase() + String(Number(m[2]));
+      m = s.match(/^0*(\d+)$/);
+      if (m) return String(Number(m[1]));
+      return s.toUpperCase();
+    }
+
+    function setGtfsStatus(message, isError = false) {
+      if (!els.gtfsStatus) return;
+      els.gtfsStatus.textContent = message;
+      els.gtfsStatus.style.color = isError ? "#fecaca" : "";
+    }
+
+    function updateDataSourceLabel(meta = null) {
+      if (!els.dataSourceLabel) return;
+      if (dataSource === "gtfs") {
+        const suffix = meta?.created ? ` · geladen ${new Date(meta.created).toLocaleString("de-DE")}` : "";
+        els.dataSourceLabel.textContent = `GTFS-Datenbasis${suffix}`;
+      } else {
+        els.dataSourceLabel.textContent = "Eingebetteter Linienkatalog";
+      }
+    }
+
+    function maybeAutoLoadGtfs() {
+      if (localStorage.getItem(GTFS_CACHE_KEY)) return;
+      if (!window.fetch || !window.DecompressionStream) {
+        setGtfsStatus("Automatischer GTFS-Abruf ist in diesem Browser nicht verfügbar. Du kannst stattdessen eine heruntergeladene GTFS-ZIP-Datei importieren.");
+        return;
+      }
+      setTimeout(() => loadGtfsFromUrl(false), 700);
+    }
+
+    function restoreCachedGtfs() {
+      try {
+        const cached = localStorage.getItem(GTFS_CACHE_KEY);
+        if (!cached) return false;
+        const parsed = JSON.parse(cached);
+        if (!parsed || typeof parsed !== "object") return false;
+        const lineCount = Object.keys(parsed).length;
+        if (lineCount < 20) return false;
+        data = parsed;
+        dataSource = "gtfs";
+        rebuildIndexes();
+        const meta = JSON.parse(localStorage.getItem(GTFS_CACHE_META_KEY) || "{}");
+        updateDataSourceLabel(meta);
+        setGtfsStatus(`Zwischengespeicherte GTFS-Datenbasis aktiv: ${allLines.length} Linien · ${allStops.length} Haltestellen.`);
+        return true;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+
+    async function loadGtfsFromUrl(userInitiated = true) {
+      if (gameActive) {
+        setGtfsStatus("Bitte beende das laufende Spiel, bevor du die Datenbasis wechselst.", true);
+        return;
+      }
+      if (!window.fetch) {
+        setGtfsStatus("Dieser Browser unterstützt fetch nicht. Bitte importiere die GTFS-ZIP-Datei manuell.", true);
+        return;
+      }
+      if (!window.DecompressionStream) {
+        setGtfsStatus("Dieser Browser kann ZIP-Einträge nicht entpacken. Bitte nutze einen aktuellen Browser oder importiere später erneut.", true);
+        return;
+      }
+      try {
+        if (els.autoGtfsBtn) els.autoGtfsBtn.disabled = true;
+        setGtfsStatus("Lade offiziellen NRW-GTFS-Datensatz. Das kann wegen der Dateigröße etwas dauern …");
+        const response = await fetch(OFFICIAL_GTFS_URL, { mode: "cors", cache: "force-cache" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        await applyGtfsBuffer(buffer, "offizieller NRW-GTFS-Abruf");
+      } catch (err) {
+        console.warn(err);
+        const msg = userInitiated
+          ? `Automatischer Abruf fehlgeschlagen: ${err.message || err}. Lade die ZIP-Datei von Open.NRW/gtfs.openvrr.de herunter und importiere sie über „GTFS-ZIP importieren“. `
+          : "Automatischer GTFS-Abruf wurde blockiert oder ist offline nicht verfügbar. Du kannst die offizielle ZIP-Datei manuell importieren.";
+        setGtfsStatus(msg, userInitiated);
+      } finally {
+        if (els.autoGtfsBtn) els.autoGtfsBtn.disabled = false;
+      }
+    }
+
+    async function handleGtfsFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (gameActive) {
+        setGtfsStatus("Bitte beende das laufende Spiel, bevor du die Datenbasis wechselst.", true);
+        event.target.value = "";
+        return;
+      }
+      try {
+        setGtfsStatus(`Importiere ${file.name} …`);
+        const buffer = await file.arrayBuffer();
+        await applyGtfsBuffer(buffer, file.name);
+      } catch (err) {
+        console.error(err);
+        setGtfsStatus(`GTFS-Import fehlgeschlagen: ${err.message || err}`, true);
+      } finally {
+        event.target.value = "";
+      }
+    }
+
+    function resetToEmbeddedData() {
+      if (gameActive) {
+        setGtfsStatus("Bitte beende das laufende Spiel, bevor du die Datenbasis wechselst.", true);
+        return;
+      }
+      data = clone(ORIGINAL_DATA);
+      dataSource = "embedded";
+      localStorage.removeItem(GTFS_CACHE_KEY);
+      localStorage.removeItem(GTFS_CACHE_META_KEY);
+      rebuildIndexes();
+      updateDataSourceLabel();
+      setGtfsStatus(`Eingebetteter Linienkatalog aktiv: ${allLines.length} Linien · ${allStops.length} Haltepunkte.`);
+    }
+
+    async function applyGtfsBuffer(buffer, sourceName) {
+      const needed = ["agency.txt", "routes.txt", "trips.txt", "stop_times.txt", "stops.txt"];
+      const files = await extractZipTextFiles(buffer, needed, (name) => setGtfsStatus(`Entpacke ${name} …`));
+      for (const name of needed) {
+        if (!files[name]) throw new Error(`${name} fehlt in der ZIP-Datei.`);
+      }
+      setGtfsStatus("Baue Linien-Haltestellen-Zuordnung aus GTFS …");
+      const gtfsData = buildMvgDataFromGtfs(files);
+      const lineCount = Object.keys(gtfsData).length;
+      const stopCount = new Set(Object.values(gtfsData).flatMap(entry => entry.stops)).size;
+      if (lineCount < 20 || stopCount < 100) {
+        throw new Error(`Es wurden nur ${lineCount} Linien und ${stopCount} Haltestellen erkannt. Das sieht nicht nach dem MVG-Datensatz aus.`);
+      }
+      data = gtfsData;
+      dataSource = "gtfs";
+      rebuildIndexes();
+      const meta = { source: sourceName, created: new Date().toISOString(), lines: allLines.length, stops: allStops.length };
+      try {
+        localStorage.setItem(GTFS_CACHE_KEY, JSON.stringify(gtfsData));
+        localStorage.setItem(GTFS_CACHE_META_KEY, JSON.stringify(meta));
+      } catch (err) {
+        console.warn(err);
+        setGtfsStatus(`GTFS-Daten aktiv: ${allLines.length} Linien · ${allStops.length} Haltestellen. Hinweis: Der Browser konnte die Daten nicht dauerhaft speichern.`);
+        updateDataSourceLabel(meta);
+        return;
+      }
+      updateDataSourceLabel(meta);
+      setGtfsStatus(`GTFS-Daten aktiv: ${allLines.length} Linien · ${allStops.length} Haltestellen. Quelle: ${sourceName}.`);
+    }
+
+    async function extractZipTextFiles(buffer, wantedNames, onProgress = () => {}) {
+      if (!window.DecompressionStream) throw new Error("DecompressionStream wird nicht unterstützt.");
+      const bytes = new Uint8Array(buffer);
+      const wanted = new Set(wantedNames.map(n => n.toLowerCase()));
+      const result = {};
+      const eocd = findEndOfCentralDirectory(bytes);
+      if (eocd < 0) throw new Error("ZIP-Ende nicht gefunden.");
+      const view = new DataView(bytes.buffer);
+      const totalEntries = view.getUint16(eocd + 10, true);
+      const centralDirOffset = view.getUint32(eocd + 16, true);
+      let ptr = centralDirOffset;
+      const decoder = new TextDecoder("utf-8");
+
+      for (let i = 0; i < totalEntries; i++) {
+        if (view.getUint32(ptr, true) !== 0x02014b50) throw new Error("Ungültiges ZIP-Zentralverzeichnis.");
+        const method = view.getUint16(ptr + 10, true);
+        const compressedSize = view.getUint32(ptr + 20, true);
+        const fileNameLength = view.getUint16(ptr + 28, true);
+        const extraLength = view.getUint16(ptr + 30, true);
+        const commentLength = view.getUint16(ptr + 32, true);
+        const localHeaderOffset = view.getUint32(ptr + 42, true);
+        const name = decoder.decode(bytes.slice(ptr + 46, ptr + 46 + fileNameLength));
+        const baseName = name.split("/").pop().toLowerCase();
+
+        if (wanted.has(baseName)) {
+          onProgress(baseName);
+          const localNameLength = view.getUint16(localHeaderOffset + 26, true);
+          const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
+          const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+          const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+          let plain;
+          if (method === 0) {
+            plain = compressed;
+          } else if (method === 8) {
+            plain = await inflateRaw(compressed);
+          } else {
+            throw new Error(`ZIP-Kompressionsmethode ${method} wird nicht unterstützt.`);
+          }
+          result[baseName] = decoder.decode(plain);
+        }
+
+        ptr += 46 + fileNameLength + extraLength + commentLength;
+      }
+      return result;
+    }
+
+    function findEndOfCentralDirectory(bytes) {
+      for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 66000); i--) {
+        if (bytes[i] === 0x50 && bytes[i + 1] === 0x4b && bytes[i + 2] === 0x05 && bytes[i + 3] === 0x06) return i;
+      }
+      return -1;
+    }
+
+    async function inflateRaw(bytes) {
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      const response = new Response(stream);
+      return new Uint8Array(await response.arrayBuffer());
+    }
+
+    function parseCsvLine(line) {
+      const out = [];
+      let cur = "";
+      let quoted = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (quoted) {
+          if (ch === '"') {
+            if (line[i + 1] === '"') { cur += '"'; i++; }
+            else quoted = false;
+          } else cur += ch;
+        } else {
+          if (ch === ',') { out.push(cur); cur = ""; }
+          else if (ch === '"') quoted = true;
+          else cur += ch;
+        }
+      }
+      out.push(cur.replace(/\r$/, ""));
+      return out;
+    }
+
+    function parseCsvObjects(text) {
+      const lines = text.split(/\n/).filter(line => line.trim() !== "");
+      const headers = parseCsvLine(lines.shift() || "");
+      return lines.map(line => {
+        const values = parseCsvLine(line);
+        const row = {};
+        headers.forEach((h, idx) => row[h] = values[idx] || "");
+        return row;
+      });
+    }
+
+    function forEachCsvRow(text, callback) {
+      let start = 0;
+      let headers = null;
+      for (let i = 0; i <= text.length; i++) {
+        if (i === text.length || text.charCodeAt(i) === 10) {
+          const raw = text.slice(start, i);
+          start = i + 1;
+          if (!raw.trim()) continue;
+          const values = parseCsvLine(raw);
+          if (!headers) { headers = values; continue; }
+          callback(values, headers);
+        }
+      }
+    }
+
+    function buildMvgDataFromGtfs(files) {
+      const agencies = parseCsvObjects(files["agency.txt"]);
+      let agencyIds = new Set(agencies
+        .filter(row => MVG_AGENCY_HINTS.some(h => String(row.agency_name || "").toLowerCase().includes(h)))
+        .map(row => row.agency_id));
+      if (!agencyIds.size) agencyIds = new Set(["7678"]); // in älteren NRW-GTFS-Dateien die MVG-Agenturkennung
+
+      const embeddedLines = new Set(Object.keys(ORIGINAL_DATA).map(normalizeLineId));
+      const routesById = new Map();
+      const routeInfoByLine = new Map();
+      for (const row of parseCsvObjects(files["routes.txt"])) {
+        const line = normalizeLineId(row.route_short_name || row.route_long_name || "");
+        if (!line) continue;
+        const agencyMatch = agencyIds.has(row.agency_id);
+        const fallbackLineMatch = embeddedLines.has(line) && String(row.route_type || "3") === "3";
+        if (!agencyMatch && !fallbackLineMatch) continue;
+        routesById.set(row.route_id, line);
+        if (!routeInfoByLine.has(line)) {
+          routeInfoByLine.set(line, {
+            longName: normalizeStopName(row.route_long_name || ""),
+            desc: normalizeStopName(row.route_desc || "")
+          });
+        }
+      }
+
+      const tripToLine = new Map();
+      forEachCsvRow(files["trips.txt"], (values, headers) => {
+        const row = makeRow(values, headers);
+        const line = routesById.get(row.route_id);
+        if (line) tripToLine.set(row.trip_id, line);
+      });
+
+      const stopIdsByLine = new Map();
+      forEachCsvRow(files["stop_times.txt"], (values, headers) => {
+        const row = makeRow(values, headers);
+        const line = tripToLine.get(row.trip_id);
+        if (!line) return;
+        if (!stopIdsByLine.has(line)) stopIdsByLine.set(line, new Map());
+        const seq = Number(row.stop_sequence) || 999999;
+        const m = stopIdsByLine.get(line);
+        if (!m.has(row.stop_id) || seq < m.get(row.stop_id)) m.set(row.stop_id, seq);
+      });
+
+      const stopNames = new Map();
+      forEachCsvRow(files["stops.txt"], (values, headers) => {
+        const row = makeRow(values, headers);
+        const name = normalizeStopName(row.stop_name || "");
+        if (row.stop_id && name) stopNames.set(row.stop_id, name);
+      });
+
+      const result = {};
+      for (const [line, stopMap] of stopIdsByLine) {
+        const stops = [...stopMap.entries()]
+          .sort((a, b) => a[1] - b[1] || String(a[0]).localeCompare(String(b[0]), "de"))
+          .map(([stopId]) => stopNames.get(stopId))
+          .filter(Boolean);
+        const uniqueStops = [...new Set(stops)];
+        if (uniqueStops.length < 2) continue;
+        const info = routeInfoByLine.get(line) || {};
+        let route = info.longName || info.desc || `${uniqueStops[0]} – ${uniqueStops[uniqueStops.length - 1]}`;
+        route = route.replace(/\s+-\s+/g, " – ");
+        result[line] = { route, stops: uniqueStops };
+      }
+
+      return Object.fromEntries(Object.entries(result).sort(([a], [b]) => compareLines(a, b)));
+    }
+
+    function makeRow(values, headers) {
+      const row = {};
+      headers.forEach((h, idx) => row[h] = values[idx] || "");
+      return row;
+    }
+
+    function lineLabel(line) {
+      return `Linie ${line}`;
+    }
+
+    function compareLines(a, b) {
+      const parse = (line) => {
+        const s = String(line);
+        const m = s.match(/^([A-Za-z]+)?0*(\d+)$/);
+        if (!m) return { group: 9, num: Number.MAX_SAFE_INTEGER, prefix: s, raw: s };
+        const prefix = (m[1] || "").toUpperCase();
+        const group = prefix === "S" ? 0 : prefix === "" ? 1 : prefix === "N" ? 2 : 3;
+        return { group, num: Number(m[2]), prefix, raw: s };
+      };
+      const pa = parse(a), pb = parse(b);
+      return pa.group - pb.group || pa.num - pb.num || pa.prefix.localeCompare(pb.prefix, "de") || pa.raw.localeCompare(pb.raw, "de");
+    }
+
+    function lineSetLabel(lines) {
+      return lines.slice().sort(compareLines).map(lineLabel).join(" + ");
+    }
+
+    function shuffle(array) {
+      const a = array.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function sample(array) {
+      return array[Math.floor(Math.random() * array.length)];
+    }
+
+    function loadHighscores() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem("mvgQuizHighscores") || "[]");
+        if (Array.isArray(parsed)) return parsed.filter(x => x && typeof x.name === "string" && Number.isFinite(Number(x.score))).slice(0, 10);
+      } catch (_) {}
+
+      const legacyBest = Number(localStorage.getItem("mvgQuizBest") || 0);
+      return legacyBest > 0 ? [{ name: "Alter Highscore", score: legacyBest, round: 0, date: "" }] : [];
+    }
+
+    function saveHighscores() {
+      localStorage.setItem("mvgQuizHighscores", JSON.stringify(highscores.slice(0, 10)));
+      localStorage.setItem("mvgQuizBest", String(highscores[0]?.score || 0));
+    }
+
+    function rebuildIndexes() {
+      allLines = Object.keys(data).sort(compareLines);
+      stopToLines = new Map();
+
+      for (const line of allLines) {
+        const entry = data[line];
+        if (!entry || !Array.isArray(entry.stops)) continue;
+        entry.stops = [...new Set(entry.stops.map(normalizeStopName).filter(Boolean))];
+        for (const stop of entry.stops) {
+          if (!stopToLines.has(stop)) stopToLines.set(stop, new Set());
+          stopToLines.get(stop).add(line);
+        }
+      }
+
+      allStops = [...stopToLines.keys()].sort((a, b) => a.localeCompare(b, "de"));
+      els.dataBadge.textContent = `${allLines.length} Linien · ${allStops.length} Haltepunkte`;
+      updateStats();
+    }
+
+    function updateStats() {
+      els.score.textContent = score;
+      els.lives.textContent = lives > 0 ? "♥ ".repeat(lives).trim() : "0";
+      els.streak.textContent = streak;
+      els.round.textContent = round;
+      els.best.textContent = highscores[0]?.score || 0;
+      renderHighscores();
+    }
+
+    function renderHighscores() {
+      if (!highscores.length) {
+        els.scoreList.innerHTML = `<li class="empty">Noch kein Score eingetragen.</li>`;
+        return;
+      }
+
+      els.scoreList.innerHTML = highscores.slice(0, 10).map((entry, idx) => {
+        const date = entry.date ? new Date(entry.date).toLocaleDateString("de-DE") : "";
+        const details = [entry.round ? `${entry.round} Fragen` : "", date].filter(Boolean).join(" · ");
+        return `
+          <li class="scoreItem">
+            <div class="rank">#${idx + 1}</div>
+            <div>
+              <div class="player">${escapeHtml(entry.name || "Ohne Namen")}</div>
+              <div class="meta">${escapeHtml(details || "gespeichert")}</div>
+            </div>
+            <div class="points">${Number(entry.score) || 0} Punkte</div>
+          </li>`;
+      }).join("");
+    }
+
+    function makeOptions(correct, pool, count = 4) {
+      const options = [correct];
+      const wrongs = shuffle(pool.filter(x => x !== correct));
+      for (const wrong of wrongs) {
+        if (!options.includes(wrong)) options.push(wrong);
+        if (options.length >= count) break;
+      }
+      return shuffle(options);
+    }
+
+    function makeQuestionStopToLine() {
+      const stop = sample(allStops);
+      const possibleLines = [...stopToLines.get(stop)].sort(compareLines);
+      const correctLine = sample(possibleLines);
+      const correct = lineLabel(correctLine);
+      let wrongPool = allLines.filter(line => !possibleLines.includes(line)).map(lineLabel);
+
+      if (wrongPool.length < 3) {
+        wrongPool = allLines.filter(line => line !== correctLine).map(lineLabel);
+      }
+
+      return {
+        type: "Haltepunkt → Linie",
+        text: `Welche dieser Linien fährt über „${stop}“?`,
+        hint: possibleLines.length === 1
+          ? `Im Datensatz ist dieser Haltepunkt nur ${lineLabel(possibleLines[0])} zugeordnet.`
+          : `Es gibt mehrere richtige Linien im Datensatz: ${lineSetLabel(possibleLines)}. Gesucht ist eine davon.`,
+        correct,
+        options: makeOptions(correct, wrongPool),
+        explanation: `Eine richtige Antwort ist ${correct}. Im Datensatz fährt über „${stop}“: ${lineSetLabel(possibleLines)}.`
+      };
+    }
+
+    function makeQuestionLineToStop() {
+      const line = sample(allLines);
+      const correct = sample(data[line].stops);
+      const wrongPool = allStops.filter(stop => !data[line].stops.includes(stop));
+      return {
+        type: "Linie → Haltestelle",
+        text: `Welche Haltestelle liegt auf ${lineLabel(line)}?`,
+        hint: data[line].route,
+        correct,
+        options: makeOptions(correct, wrongPool),
+        explanation: `„${correct}“ liegt auf ${lineLabel(line)} (${data[line].route}).`
+      };
+    }
+
+    function makeQuestionNotOnLine() {
+      const line = sample(allLines.filter(l => data[l].stops.length >= 4));
+      const correct = sample(allStops.filter(stop => !data[line].stops.includes(stop)));
+      const trueStops = shuffle(data[line].stops).slice(0, 3);
+      return {
+        type: "Ausschlussfrage",
+        text: `Welche Haltestelle gehört NICHT zu ${lineLabel(line)}?`,
+        hint: data[line].route,
+        correct,
+        options: shuffle([correct, ...trueStops]),
+        explanation: `„${correct}“ gehört in diesem Datensatz nicht zu ${lineLabel(line)}. Die Linie verläuft: ${data[line].route}.`
+      };
+    }
+
+    function makeQuestionRouteToLine() {
+      const line = sample(allLines);
+      const correct = lineLabel(line);
+      const pool = allLines.map(lineLabel);
+      return {
+        type: "Linienverlauf → Linie",
+        text: `Welche Linie hat den Verlauf „${data[line].route}“?`,
+        hint: `Im Datensatz sind ${data[line].stops.length} Haltepunkte für diese Linie hinterlegt.`,
+        correct,
+        options: makeOptions(correct, pool),
+        explanation: `Der Verlauf gehört zu ${correct}.`
+      };
+    }
+
+    function startGame() {
+      if (allLines.length < 2 || allStops.length < 8) {
+        els.feedback.textContent = "Der Datensatz ist zu klein. Bitte ergänze mindestens zwei Linien und mehrere Haltepunkte.";
+        return;
+      }
+
+      gameActive = true;
+      answered = true;
+      savedCurrentScore = false;
+      score = 0;
+      streak = 0;
+      round = 0;
+      lives = 3;
+      currentQuestion = null;
+      els.gameOverPanel.classList.remove("visible");
+      els.abortBtn.disabled = false;
+      els.nextBtn.disabled = false;
+      els.nextBtn.textContent = "Neue Frage";
+      els.feedback.textContent = `Das Spiel läuft. Du hast drei Leben. Datenbasis: ${allLines.length} Linien und ${allStops.length} Haltestellen.`;
+      updateStats();
+      newQuestion();
+    }
+
+    function newQuestion() {
+      if (!gameActive) {
+        startGame();
+        return;
+      }
+
+      if (lives <= 0) {
+        endGame("Keine Leben mehr.");
+        return;
+      }
+
+      answered = false;
+      round += 1;
+      updateStats();
+      const makers = [makeQuestionStopToLine, makeQuestionLineToStop, makeQuestionNotOnLine, makeQuestionRouteToLine];
+      currentQuestion = sample(makers)();
+      els.questionType.textContent = currentQuestion.type;
+      els.question.textContent = currentQuestion.text;
+      els.hint.textContent = "Wähle eine Antwort. Bei einer falschen Antwort verlierst du ein Leben.";
+      els.feedback.textContent = "Wähle eine Antwort.";
+      els.nextBtn.disabled = true;
+      els.abortBtn.disabled = false;
+      renderAnswers(currentQuestion.options);
+    }
+
+    function renderAnswers(options) {
+      els.answers.innerHTML = "";
+      options.forEach((option, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "answer";
+        btn.type = "button";
+        btn.innerHTML = `<span>${escapeHtml(option)}</span><span class="mark">${String.fromCharCode(65 + idx)}</span>`;
+        btn.addEventListener("click", () => chooseAnswer(option, btn));
+        els.answers.appendChild(btn);
+      });
+    }
+
+    function chooseAnswer(option, button) {
+      if (answered || !currentQuestion || !gameActive) return;
+      answered = true;
+      const buttons = [...document.querySelectorAll(".answer")];
+      buttons.forEach(btn => btn.disabled = true);
+
+      const correct = option === currentQuestion.correct;
+      for (const btn of buttons) {
+        const label = btn.querySelector("span")?.textContent;
+        if (label === currentQuestion.correct) btn.classList.add("correct");
+      }
+      if (!correct) button.classList.add("wrong");
+
+      if (correct) {
+        streak += 1;
+        const gained = 10 + Math.min(20, streak * 2);
+        score += gained;
+        els.feedback.innerHTML = `<strong>Richtig!</strong> +${gained} Punkte. ${escapeHtml(currentQuestion.explanation)}`;
+      } else {
+        lives -= 1;
+        streak = 0;
+        els.feedback.innerHTML = `<strong>Leider falsch.</strong> Ein Leben verloren. ${escapeHtml(currentQuestion.explanation)}`;
+      }
+
+      updateStats();
+
+      if (lives <= 0) {
+        endGame("Keine Leben mehr.");
+      } else {
+        els.nextBtn.disabled = false;
+        els.nextBtn.textContent = "Nächste Frage";
+      }
+    }
+
+    function endGame(reason) {
+      gameActive = false;
+      answered = true;
+      currentQuestion = null;
+      els.abortBtn.disabled = true;
+      els.nextBtn.disabled = false;
+      els.nextBtn.textContent = "Neues Spiel";
+      els.questionType.textContent = "Spiel beendet";
+      els.question.textContent = reason;
+      els.hint.textContent = `Endstand: ${score} Punkte nach ${round} Fragen.`;
+      els.gameOverTitle.textContent = reason;
+      els.gameOverText.textContent = `Dein Score: ${score} Punkte. Trage deinen Namen ein, um ihn in die Highscore-Liste zu übernehmen.`;
+      els.gameOverPanel.classList.add("visible");
+      els.playerName.focus();
+    }
+
+    function submitHighscore(event) {
+      event.preventDefault();
+      if (savedCurrentScore) return;
+      const name = (els.playerName.value || "").trim() || "Anonym";
+      highscores.push({ name, score, round, date: new Date().toISOString() });
+      highscores.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0) || (Number(a.round) || 0) - (Number(b.round) || 0));
+      highscores = highscores.slice(0, 10);
+      saveHighscores();
+      savedCurrentScore = true;
+      els.gameOverText.textContent = `Score gespeichert: ${score} Punkte für ${name}.`;
+      els.highscoreForm.querySelector("button").disabled = true;
+      els.playerName.disabled = true;
+      updateStats();
+    }
+
+    function prepareHighscoreForm() {
+      savedCurrentScore = false;
+      els.playerName.disabled = false;
+      els.playerName.value = localStorage.getItem("mvgQuizLastName") || "";
+      els.highscoreForm.querySelector("button").disabled = false;
+    }
+
+    function abortGame() {
+      if (!gameActive) return;
+      endGame("Spiel abgebrochen.");
+    }
+
+    function clearHighscores() {
+      if (!confirm("Highscore-Liste wirklich löschen?")) return;
+      highscores = [];
+      saveHighscores();
+      updateStats();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+      }[ch]));
+    }
+
+    els.nextBtn.addEventListener("click", () => {
+      if (!gameActive) {
+        prepareHighscoreForm();
+        startGame();
+      } else if (answered) {
+        newQuestion();
+      }
+    });
+
+
+    els.abortBtn.addEventListener("click", abortGame);
+    els.highscoreForm.addEventListener("submit", (event) => {
+      localStorage.setItem("mvgQuizLastName", els.playerName.value.trim());
+      submitHighscore(event);
+    });
+    els.clearHighscoresBtn.addEventListener("click", clearHighscores);
+    rebuildIndexes();
+    updateDataSourceLabel();
+    restoreCachedGtfs();
+    renderHighscores();
+  </script>
+</body>
+</html>
