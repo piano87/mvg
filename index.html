@@ -344,13 +344,13 @@
 
         <section class="highscores">
           <div class="row" style="justify-content: space-between; margin-bottom: 10px;">
-            <h2>Highscore</h2>
-            <button class="btn secondary" id="clearHighscoresBtn" type="button">Highscore löschen</button>
+            <h2>Globaler Highscore</h2>
+            <button class="btn secondary" id="clearHighscoresBtn" type="button">Highscore aktualisieren</button>
           </div>
           <ol class="scoreList" id="scoreList"></ol>
         </section>
 
-        <p class="sourceNote">Hinweis: Die Datenbasis ist lokal in dieser HTML-Datei eingebettet und ersetzt keine tagesaktuelle Fahrplanauskunft.</p>
+        <p class="sourceNote">Hinweis: Die Datenbasis ist lokal in dieser HTML-Datei eingebettet und ersetzt keine tagesaktuelle Fahrplanauskunft. Der Highscore wird global über einen Cloudflare-Worker gespeichert, sobald die Worker-Adresse unten im Code eingetragen ist.</p>
       </section>
     </main>
   </div>
@@ -1468,6 +1468,16 @@ const ORIGINAL_DATA = {
       }
 };
 
+    // ---------------------------------------------------------------------
+    // Globaler Highscore
+    // ---------------------------------------------------------------------
+    // Nach dem Deployment des Cloudflare Workers hier die Worker-URL eintragen,
+    // z. B. "https://mvg-quiz-highscore.pianostein.workers.dev".
+    // Solange hier der Platzhalter steht oder der Worker nicht erreichbar ist,
+    // nutzt das Spiel automatisch einen lokalen Fallback im Browser.
+    const HIGHSCORE_API_URL = "https://DEIN-WORKER.DEINE-SUBDOMAIN.workers.dev";
+    const HIGHSCORE_GAME_ID = "mvg-haltestellen-quiz";
+
     let data = clone(ORIGINAL_DATA);
     let stopToLines = new Map();
     let allStops = [];
@@ -1871,19 +1881,81 @@ const ORIGINAL_DATA = {
       return array[Math.floor(Math.random() * array.length)];
     }
 
+    function highscoreApiBase() {
+      const raw = String(HIGHSCORE_API_URL || "").trim().replace(/\/+$/, "");
+      if (!raw || raw.includes("DEIN-WORKER") || raw.includes("DEINE-SUBDOMAIN")) return "";
+      return raw;
+    }
+
+    function sanitizeHighscores(list) {
+      if (!Array.isArray(list)) return [];
+      return list
+        .filter(x => x && typeof x.name === "string" && Number.isFinite(Number(x.score)))
+        .map(x => ({
+          name: String(x.name || "Anonym").slice(0, 24),
+          score: Math.max(0, Math.floor(Number(x.score) || 0)),
+          round: Math.max(0, Math.floor(Number(x.round) || 0)),
+          date: x.date || x.created_at || ""
+        }))
+        .sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0) || (Number(b.round) || 0) - (Number(a.round) || 0))
+        .slice(0, 10);
+    }
+
     function loadHighscores() {
       try {
-        const parsed = JSON.parse(localStorage.getItem("mvgQuizHighscores") || "[]");
-        if (Array.isArray(parsed)) return parsed.filter(x => x && typeof x.name === "string" && Number.isFinite(Number(x.score))).slice(0, 10);
+        const parsed = JSON.parse(localStorage.getItem("mvgQuizHighscoresFallback") || localStorage.getItem("mvgQuizHighscores") || "[]");
+        const clean = sanitizeHighscores(parsed);
+        if (clean.length) return clean;
       } catch (_) {}
 
       const legacyBest = Number(localStorage.getItem("mvgQuizBest") || 0);
-      return legacyBest > 0 ? [{ name: "Alter Highscore", score: legacyBest, round: 0, date: "" }] : [];
+      return legacyBest > 0 ? [{ name: "Alter lokaler Highscore", score: legacyBest, round: 0, date: "" }] : [];
     }
 
     function saveHighscores() {
-      localStorage.setItem("mvgQuizHighscores", JSON.stringify(highscores.slice(0, 10)));
+      localStorage.setItem("mvgQuizHighscoresFallback", JSON.stringify(highscores.slice(0, 10)));
       localStorage.setItem("mvgQuizBest", String(highscores[0]?.score || 0));
+    }
+
+    async function fetchGlobalHighscores(showFeedback = false) {
+      const base = highscoreApiBase();
+      if (!base) {
+        if (showFeedback) {
+          els.feedback.textContent = "Noch keine Worker-Adresse eingetragen. Der Highscore läuft vorerst lokal in diesem Browser.";
+        }
+        highscores = loadHighscores();
+        updateStats();
+        return false;
+      }
+
+      try {
+        if (showFeedback) els.feedback.textContent = "Lade globalen Highscore …";
+        const response = await fetch(`${base}/leaderboard?game=${encodeURIComponent(HIGHSCORE_GAME_ID)}`, {
+          method: "GET",
+          cache: "no-store"
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        highscores = sanitizeHighscores(payload.scores || payload.highscores || []);
+        updateStats();
+        if (showFeedback) els.feedback.textContent = "Globaler Highscore aktualisiert.";
+        return true;
+      } catch (err) {
+        console.warn("Globaler Highscore nicht erreichbar:", err);
+        if (showFeedback) {
+          els.feedback.textContent = "Globaler Highscore nicht erreichbar. Bis der Cloudflare-Worker läuft, wird lokal im Browser gespeichert.";
+        }
+        highscores = loadHighscores();
+        updateStats();
+        return false;
+      }
+    }
+
+    function addLocalHighscore(entry) {
+      highscores.push(entry);
+      highscores = sanitizeHighscores(highscores);
+      saveHighscores();
+      updateStats();
     }
 
     function rebuildIndexes() {
@@ -1916,7 +1988,7 @@ const ORIGINAL_DATA = {
 
     function renderHighscores() {
       if (!highscores.length) {
-        els.scoreList.innerHTML = `<li class="empty">Noch kein Score eingetragen.</li>`;
+        els.scoreList.innerHTML = `<li class="empty">Noch kein Score eingetragen oder globaler Highscore noch nicht geladen.</li>`;
         return;
       }
 
@@ -2120,19 +2192,56 @@ const ORIGINAL_DATA = {
       els.playerName.focus();
     }
 
-    function submitHighscore(event) {
+    async function submitHighscore(event) {
       event.preventDefault();
       if (savedCurrentScore) return;
+
       const name = (els.playerName.value || "").trim() || "Anonym";
-      highscores.push({ name, score, round, date: new Date().toISOString() });
-      highscores.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0) || (Number(a.round) || 0) - (Number(b.round) || 0));
-      highscores = highscores.slice(0, 10);
-      saveHighscores();
-      savedCurrentScore = true;
-      els.gameOverText.textContent = `Score gespeichert: ${score} Punkte für ${name}.`;
-      els.highscoreForm.querySelector("button").disabled = true;
+      const entry = {
+        game: HIGHSCORE_GAME_ID,
+        name,
+        score: Math.max(0, Math.floor(Number(score) || 0)),
+        round: Math.max(0, Math.floor(Number(round) || 0)),
+        date: new Date().toISOString()
+      };
+
+      const submitButton = els.highscoreForm.querySelector("button");
+      submitButton.disabled = true;
       els.playerName.disabled = true;
-      updateStats();
+      els.gameOverText.textContent = "Speichere Score …";
+
+      const base = highscoreApiBase();
+      if (base) {
+        try {
+          const response = await fetch(`${base}/leaderboard`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(entry)
+          });
+          if (!response.ok) {
+            let msg = `HTTP ${response.status}`;
+            try {
+              const payload = await response.json();
+              if (payload && payload.error) msg = payload.error;
+            } catch (_) {}
+            throw new Error(msg);
+          }
+          const payload = await response.json();
+          highscores = sanitizeHighscores(payload.scores || payload.highscores || []);
+          savedCurrentScore = true;
+          els.gameOverText.textContent = `Score global gespeichert: ${entry.score} Punkte für ${name}.`;
+          updateStats();
+          return;
+        } catch (err) {
+          console.warn("Globales Speichern fehlgeschlagen:", err);
+          els.gameOverText.textContent = `Globales Speichern fehlgeschlagen. Score wurde nur lokal gespeichert: ${entry.score} Punkte für ${name}.`;
+        }
+      } else {
+        els.gameOverText.textContent = `Noch keine Worker-Adresse eingetragen. Score wurde lokal gespeichert: ${entry.score} Punkte für ${name}.`;
+      }
+
+      addLocalHighscore(entry);
+      savedCurrentScore = true;
     }
 
     function prepareHighscoreForm() {
@@ -2147,11 +2256,8 @@ const ORIGINAL_DATA = {
       endGame("Spiel abgebrochen.");
     }
 
-    function clearHighscores() {
-      if (!confirm("Highscore-Liste wirklich löschen?")) return;
-      highscores = [];
-      saveHighscores();
-      updateStats();
+    async function refreshHighscores() {
+      await fetchGlobalHighscores(true);
     }
 
     function escapeHtml(str) {
@@ -2175,11 +2281,12 @@ const ORIGINAL_DATA = {
       localStorage.setItem("mvgQuizLastName", els.playerName.value.trim());
       submitHighscore(event);
     });
-    els.clearHighscoresBtn.addEventListener("click", clearHighscores);
+    els.clearHighscoresBtn.addEventListener("click", refreshHighscores);
     rebuildIndexes();
     updateDataSourceLabel();
     restoreCachedGtfs();
     renderHighscores();
+    fetchGlobalHighscores(false);
   </script>
 </body>
 </html>
